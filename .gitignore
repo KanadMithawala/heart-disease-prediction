@@ -1,0 +1,19 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Large model files
+rf_model.joblib
+gb_model.joblib
+scaler.joblib
+
+# Dataset (optional, if large)
+framingham.csv
+
+# Other temporary files
+*.log
+.DS_Store

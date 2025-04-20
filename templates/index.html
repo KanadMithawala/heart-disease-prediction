@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Disease Risk Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        function App() {
+            const [formData, setFormData] = React.useState({
+                male: 0,
+                age: '',
+                currentSmoker: 0,
+                cigsPerDay: '',
+                BPMeds: 0,
+                prevalentStroke: 0,
+                prevalentHyp: 0,
+                diabetes: 0,
+                totChol: '',
+                sysBP: '',
+                diaBP: '',
+                BMI: '',
+                heartRate: '',
+                glucose: ''
+            });
+            const [prediction, setPrediction] = React.useState(null);
+            const [error, setError] = React.useState(null);
+
+            // Range checks
+            const ranges = {
+                age: { min: 20, max: 100, label: 'Age' },
+                cigsPerDay: { min: 0, max: 70, label: 'Cigarettes Per Day' },
+                totChol: { min: 100, max: 600, label: 'Total Cholesterol' },
+                sysBP: { min: 70, max: 250, label: 'Systolic BP' },
+                diaBP: { min: 40, max: 150, label: 'Diastolic BP' },
+                BMI: { min: 15, max: 60, label: 'BMI' },
+                heartRate: { min: 40, max: 150, label: 'Heart Rate' },
+                glucose: { min: 40, max: 400, label: 'Glucose' }
+            };
+
+            const handleChange = (e) => {
+                const { name, value, type } = e.target;
+                setFormData({
+                    ...formData,
+                    [name]: type === 'number' ? value : parseInt(value)
+                });
+            };
+
+            const validateInput = (name, value) => {
+                if (ranges[name]) {
+                    const numValue = parseFloat(value);
+                    if (isNaN(numValue) || value === '') {
+                        return `${ranges[name].label} is required`;
+                    }
+                    if (numValue < ranges[name].min || numValue > ranges[name].max) {
+                        return `${ranges[name].label} must be between ${ranges[name].min} and ${ranges[name].max}`;
+                    }
+                }
+                return null;
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError(null);
+                setPrediction(null);
+
+                // Validate all inputs
+                for (const [name, value] of Object.entries(formData)) {
+                    const errorMsg = validateInput(name, value);
+                    if (errorMsg) {
+                        setError(errorMsg);
+                        return;
+                    }
+                }
+
+                try {
+                    const response = await fetch('http://localhost:5000/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ...formData,
+                            male: parseInt(formData.male),
+                            currentSmoker: parseInt(formData.currentSmoker),
+                            BPMeds: parseInt(formData.BPMeds),
+                            prevalentStroke: parseInt(formData.prevalentStroke),
+                            prevalentHyp: parseInt(formData.prevalentHyp),
+                            diabetes: parseInt(formData.diabetes),
+                            age: parseFloat(formData.age),
+                            cigsPerDay: parseFloat(formData.cigsPerDay),
+                            totChol: parseFloat(formData.totChol),
+                            sysBP: parseFloat(formData.sysBP),
+                            diaBP: parseFloat(formData.diaBP),
+                            BMI: parseFloat(formData.BMI),
+                            heartRate: parseFloat(formData.heartRate),
+                            glucose: parseFloat(formData.glucose)
+                        })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        setPrediction({
+                            result: data.prediction,
+                            probability: (data.probability * 100).toFixed(2)
+                        });
+                    } else {
+                        setError(data.error || 'Prediction failed');
+                    }
+                } catch (err) {
+                    setError('Error connecting to the server');
+                }
+            };
+
+            return (
+                <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+                    <h1 className="text-2xl font-bold mb-6 text-center">Heart Disease Risk Prediction</h1>
+                    {error && (
+                        <div className="mb-4 text-red-600 text-center">{error}</div>
+                    )}
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Gender</label>
+                            <select name="male" value={formData.male} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value={0}>Female</option>
+                                <option value={1}>Male</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Age (20-100)</label>
+                            <input type="number" name="age" value={formData.age} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Current Smoker</label>
+                            <select name="currentSmoker" value={formData.currentSmoker} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value={0}>No</option>
+                                <option value={1}>Yes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Cigarettes Per Day (0-70)</label>
+                            <input type="number" name="cigsPerDay" value={formData.cigsPerDay} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">On BP Medication</label>
+                            <select name="BPMeds" value={formData.BPMeds} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value={0}>No</option>
+                                <option value={1}>Yes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Prevalent Stroke</label>
+                            <select name="prevalentStroke" value={formData.prevalentStroke} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value={0}>No</option>
+                                <option value={1}>Yes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Prevalent Hypertension</label>
+                            <select name="prevalentHyp" value={formData.prevalentHyp} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value={0}>No</option>
+                                <option value={1}>Yes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Diabetes</label>
+                            <select name="diabetes" value={formData.diabetes} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value={0}>No</option>
+                                <option value={1}>Yes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Total Cholesterol (100-600 mg/dL)</label>
+                            <input type="number" name="totChol" value={formData.totChol} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Systolic BP (70-250 mmHg)</label>
+                            <input type="number" name="sysBP" value={formData.sysBP} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Diastolic BP (40-150 mmHg)</label>
+                            <input type="number" name="diaBP" value={formData.diaBP} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">BMI (15-60 kg/m²)</label>
+                            <input type="number" name="BMI" value={formData.BMI} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" step="0.01" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Heart Rate (40-150 bpm)</label>
+                            <input type="number" name="heartRate" value={formData.heartRate} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Glucose (40-400 mg/dL)</label>
+                            <input type="number" name="glucose" value={formData.glucose} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required />
+                        </div>
+                        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">Predict</button>
+                    </form>
+                    {prediction && (
+                        <div className="mt-6 text-center">
+                            <h2 className="text-lg font-semibold">Prediction Result</h2>
+                            <p className={`text-xl ${prediction.result === 'High Risk' ? 'text-red-600' : 'text-green-600'}`}>
+                                {prediction.result} ({prediction.probability}% probability)
+                            </p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
